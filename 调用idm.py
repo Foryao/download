@@ -6,6 +6,7 @@ import re
 import os
 import subprocess
 import datetime
+import time
 
 def extract_links(url):
     response = requests.get(url)
@@ -27,6 +28,38 @@ def extract_links(url):
         src = source.get('src')
         if src and not re.search(r'loading', src) and src.endswith(video_formats):
             video_links.append(src)
+      # 第一次提取数据
+    first_image_links = image_links.copy()
+    first_video_links = video_links.copy()
+
+    # 检查是否完整提取数据，重复提取两次，间隔2秒
+    for _ in range(2):
+        time.sleep(2)
+        response = requests.get(url)
+        new_soup = BeautifulSoup(response.text, 'html.parser')
+
+        new_image_links = []
+        new_video_links = []
+
+        # 提取新的图片链接
+        for img in new_soup.find_all('img'):
+            src = img.get('src')
+            if src and not re.search(r'loading', src) and src.endswith(image_formats):
+                new_image_links.append(src)
+
+        # 提取新的视频链接
+        for source in new_soup.find_all('source'):
+            src = source.get('src')
+            if src and not re.search(r'loading', src) and src.endswith(video_formats):
+                new_video_links.append(src)
+
+        # 如果新旧数据一致，则返回
+        if first_image_links == new_image_links and first_video_links == new_video_links:
+            return image_links, video_links, soup.title.string
+
+        # 更新数据
+        image_links = new_image_links
+        video_links = new_video_links
 
     # 获取网页标题
     title = soup.title.string.strip()
